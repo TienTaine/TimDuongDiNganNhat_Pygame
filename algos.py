@@ -3,6 +3,8 @@ from const import *
 from maze import *
 import heapq
 import math
+from queue import PriorityQueue
+
 
 def DFS(g: SearchSpace, sc: pygame.Surface):
     print('Implement DFS algorithm')
@@ -149,34 +151,27 @@ def BFS(g: SearchSpace, sc: pygame.Surface):
 
     start_node.set_color(start_color, sc)
     raise NotImplementedError('not implemented')
-class iNode:
-    def __init__(self, node, cost):
-        self.node = node
-        self.cost = cost
-    
-    def __lt__(self, other):
-        return self.cost < other.cost 
-def dijkstra(g: SearchSpace, sc: pygame.Surface):
+
+def Dijkstra(g: SearchSpace, sc: pygame.Surface):
+    print('Implement Dijkstra algorithm')
     start_node = g.start
     goal_node = g.goal
 
     start_color = start_node.color
 
-    open_set = []
+    open_set = PriorityQueue()
     closed_set = set()
     father = {}
     cost = {}
 
-    heapq.heappush(open_set, iNode(start_node, 0))
+    open_set.put((0, start_node))
     start_node.set_color(start_color, sc)
 
     cost[start_node] = 0
 
-    while open_set:
-        current = heapq.heappop(open_set)
-        current_node = current.node
-        current_cost = current.cost
-        
+    while not open_set.empty():
+        current_cost, current_node = open_set.get()
+
         current_node.set_color(YELLOW, sc)
         pygame.time.delay(5)
         pygame.display.update()
@@ -195,8 +190,8 @@ def dijkstra(g: SearchSpace, sc: pygame.Surface):
                 pygame.draw.line(sc, WHITE, path[i].rect.center, path[i + 1].rect.center, 3)
                 pygame.time.delay(10)
                 pygame.display.update()
-                
-            pygame.draw.line(sc, WHITE,path[len(path) -1 ].rect.center, start_node.rect.center, 3)
+
+            pygame.draw.line(sc, WHITE, path[len(path) -1 ].rect.center, start_node.rect.center, 3)
             pygame.time.delay(10)
             pygame.display.update()
             return True
@@ -209,7 +204,7 @@ def dijkstra(g: SearchSpace, sc: pygame.Surface):
                 new_cost = cost[current_node] + 1
                 if neighbor not in cost or new_cost < cost[neighbor]:
                     cost[neighbor] = new_cost
-                    heapq.heappush(open_set, iNode(neighbor, new_cost))
+                    open_set.put((new_cost, neighbor))
                     father[neighbor] = current_node
                     neighbor.set_color(RED, sc)
                     pygame.time.delay(5)
@@ -222,40 +217,41 @@ def dijkstra(g: SearchSpace, sc: pygame.Surface):
         current_node.set_color(current_node.color, sc)
 
     start_node.set_color(start_color, sc)
-    return False
+    raise NotImplementedError('not implemented')
 
-
-def heuristic(node: Node, goal: Node) -> float:
-    dx = abs(node.rect.centerx - goal.rect.centerx)
-    dy = abs(node.rect.centery - goal.rect.centery)
-    return math.sqrt(dx**2 + dy**2)
-
-def astar(g: SearchSpace, sc: pygame.Surface):
-    print('Implement A* algorithm')
+def Astar(g: SearchSpace, sc: pygame.Surface):
+    print('Implement AStar algorithm')
     start_node = g.start
     goal_node = g.goal
 
     start_color = start_node.color
 
-    open_set = [(0, start_node)]  
-    heapq.heapify(open_set)
-    closed_set = set()  
-    g_score = {node: math.inf for node in g.grid_cells}  
-    g_score[start_node] = 0  
-    came_from = {}  
+    open_set = PriorityQueue()
+    closed_set = set()
+    open_set.put((0, start_node))  
+    start_node.set_color(start_color, sc)
+    father = {}
+    g_cost = {node: math.inf for node in g.grid_cells}
+    g_cost[start_node] = 0
+    f_cost = {node: math.inf for node in g.grid_cells}
+    f_cost[start_node] = 0
 
-    while open_set:
-        current_node = heapq.heappop(open_set)[1]  
+    while not open_set.empty():
+        current_cost, current_node = open_set.get() 
+    
+        current_node.set_color(YELLOW, sc)
+        pygame.time.delay(5)
+        pygame.display.update()
 
         if current_node == goal_node:
-            path = []
             start_node.set_color(start_color, sc)
             goal_node.set_color(PURPLE, sc)
 
+            path = []
             node = goal_node
             while node != start_node:
                 path.append(node)
-                node = came_from[node]
+                node = father[node]
 
             for i in range(len(path) - 1):
                 pygame.draw.line(sc, WHITE, path[i].rect.center, path[i + 1].rect.center, 3)
@@ -265,40 +261,40 @@ def astar(g: SearchSpace, sc: pygame.Surface):
             pygame.draw.line(sc, WHITE, path[len(path) - 1].rect.center, start_node.rect.center, 3)
             pygame.time.delay(10)
             pygame.display.update()
-
             return True
 
         closed_set.add(current_node)
 
-        current_node.set_color(YELLOW, sc)
-        pygame.time.delay(10)
-        pygame.display.update()
-
         neighbors = g.get_neighbors(current_node)
         for neighbor in neighbors:
-            if neighbor in closed_set:
-                continue
-
-            tentative_g_score = g_score[current_node] + 1  
-
-            if tentative_g_score < g_score[neighbor]:
-                came_from[neighbor] = current_node
-                g_score[neighbor] = tentative_g_score
-
-                if neighbor not in [node for _, node in open_set]:
-                    heapq.heappush(open_set, (g_score[neighbor] + heuristic(neighbor, goal_node), neighbor))
-                else:
-                    index = [node for _, node in open_set].index(neighbor)
-                    open_set[index] = (g_score[neighbor] + heuristic(neighbor, goal_node), neighbor)
-                    heapq.heapify(open_set)
-
-                neighbor.set_color(RED, sc)
-                pygame.time.delay(5)
-                pygame.display.update()
+            if neighbor not in closed_set:
+                dx = abs(current_node.id % COLS - neighbor.id % COLS)  
+                dy = abs(current_node.id // COLS - neighbor.id // COLS)  
+                if dx == 1 and dy == 1:  
+                    new_g_cost = g_cost[current_node] + math.sqrt(2)
+                else:  
+                    new_g_cost = g_cost[current_node] + 1
+                if neighbor not in g_cost or new_g_cost < g_cost[neighbor]:
+                    g_cost[neighbor] = new_g_cost
+                    f_cost[neighbor] = g_cost[neighbor] + heuristic(neighbor, goal_node)
+                    open_set.put((f_cost[neighbor], neighbor))
+                    father[neighbor] = current_node
+                    neighbor.set_color(RED, sc)
+                    pygame.time.delay(5)
+                    pygame.display.update()
 
         current_node.set_color(BLUE, sc)
         pygame.time.delay(5)
         pygame.display.update()
 
+        current_node.set_color(current_node.color, sc)
+
     start_node.set_color(start_color, sc)
-    raise ValueError('No path found')
+    raise NotImplementedError('not implemented')
+
+def heuristic(node, goal_node):
+    node_x = node.id % COLS
+    node_y = node.id // COLS
+    goal_x = goal_node.id % COLS
+    goal_y = goal_node.id // COLS
+    return math.sqrt((node_x - goal_x)**2 + (node_y - goal_y)**2)
